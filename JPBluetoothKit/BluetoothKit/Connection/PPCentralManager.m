@@ -88,6 +88,7 @@
     }
     if (scanParams.count) {
         [self initializeScanningWithParameters:[scanParams copy]];
+        return;
     }
     [self initializeScanningWithParameters:nil];
 }

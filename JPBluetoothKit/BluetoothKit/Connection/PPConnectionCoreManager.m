@@ -125,7 +125,6 @@
     }
     if (shouldDiscoverCharacteristics) {
         for (CBService *service in peripheral.services) {
-            [self.peripheral discoverCharacteristics:[self.configuration characteristicsContainedInService:service.UUID] forService:service];
             if (self.configuration.characteristics.count) {
                 if ([self.configuration configurationContainsService:service]) {
                     NSLog(@"Configuration contains service");
