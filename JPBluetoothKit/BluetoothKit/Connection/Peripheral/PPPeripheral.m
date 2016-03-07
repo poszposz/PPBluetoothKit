@@ -69,8 +69,6 @@
     [self.peripheral addObserver:self forKeyPath:@"state" options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
 }
 
-#pragma mark - data transmission
-
 - (void)readValueFromCharacteristic:(PPCharacteristic *)characteristic completionHandler:(void (^)(NSData *, NSError *))handler {
     if (![self connected]) {
         if (handler) {
@@ -78,26 +76,26 @@
         }
         return;
     }
-    if (![self validateForRead:characteristic.characteristic]) {
-        if (handler) {
-            handler(nil, [PPErrorBuilder readingFromWriteOnlyError]);
-        }
+    NSLog(@"Reading from: %@", characteristic.characteristic);
+    if (characteristic.characteristic == nil) {
+        NSLog(@"Trying to read from nil characteristic");
+        return;
     }
     self.readResponseHandler = handler;
     [self.peripheral readValueForCharacteristic:characteristic.characteristic];
 }
 
 - (void)writeCommand:(PPCommand *)command completionHandler:(void (^)(BOOL ,NSError *))handler {
+    NSLog(@"Writing command to peripheral: %@", self.peripheral);
     if (![self connected]) {
         if (handler) {
             handler(NO, [PPErrorBuilder noDeviceConnectedError]);
         }
         return;
     }
-    if (![self validateForWrite:command.characteristic.characteristic]) {
-        if (handler) {
-            handler(NO, [PPErrorBuilder writingToReadOnlyError]);
-        }
+    if (command.characteristic.characteristic == nil) {
+        NSLog(@"Trying to write to nil characteristic");
+        return;
     }
     self.writeResponseHandler = handler;
     [self.peripheral writeValue:command.commandBody forCharacteristic:command.characteristic.characteristic type:CBCharacteristicWriteWithResponse];
@@ -143,26 +141,27 @@
     return (float)chunk / (float)chunks;
 }
 
-#pragma mark - characteristics validation
+#pragma mark - characteristics validation - unused
 
-- (BOOL)validateForWrite:(CBCharacteristic *)characteristic {
-    if (characteristic.properties == CBCharacteristicPropertyWrite ||
-        characteristic.properties == CBCharacteristicPropertyWriteWithoutResponse) {
-        return YES;
-    }
-    return NO;
-}
-
-- (BOOL)validateForRead:(CBCharacteristic *)characteristic {
-    if (characteristic.properties == CBCharacteristicPropertyRead) {
-        return YES;
-    }
-    return NO;
-}
+//- (BOOL)validateForWrite:(CBCharacteristic *)characteristic {
+//    if (characteristic.properties == CBCharacteristicPropertyWrite ||
+//        characteristic.properties == CBCharacteristicPropertyWriteWithoutResponse) {
+//        return YES;
+//    }
+//    return NO;
+//}
+//
+//- (BOOL)validateForRead:(CBCharacteristic *)characteristic {
+//    if (characteristic.properties == CBCharacteristicPropertyRead) {
+//        return YES;
+//    }
+//    return NO;
+//}
 
 #pragma mark - peripheral delegate
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    NSLog(@"Received write callback with error: %@", error);
     if (self.writeResponseHandler) {
         if (error == nil) {
             self.writeResponseHandler(YES, error);
@@ -179,6 +178,7 @@
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    NSLog(@"Received read callback with error: %@", error);
     if (self.readResponseHandler) {
         self.readResponseHandler(characteristic.value, error);
     }

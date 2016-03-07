@@ -29,7 +29,7 @@ static CGFloat defaultMaximumConnectionTime = 5.0;
 
 @interface PPConnection ()
 
-@property (nonatomic, strong) PPPeripheral *connectingPeripheral;
+@property (nonatomic, readwrite ,strong) PPPeripheral *connectingPeripheral;
 @property (nonatomic, strong) PPConnectionCoreManager *bluetoothCore;
 @property (nonatomic, strong) NSMutableArray *scheduledConnections;
 
@@ -92,6 +92,7 @@ static CGFloat defaultMaximumConnectionTime = 5.0;
 }
 
 - (void)disconnectDevice:(PPPeripheral *)device {
+    NSLog(@"Disconnected device");
     for (PPConnectionCoreManager *core in self.scheduledConnections) {
         if ([core.connectedPeripheral isEqual:device]) {
             [core disconnectDevice];
@@ -172,10 +173,15 @@ static CGFloat defaultMaximumConnectionTime = 5.0;
         if (weakSelf.stateHandler) {
             weakSelf.stateHandler(weakSelf.currentConnectionState);
         }
+        BOOL servicesValid = NO;
         if (weakSelf.servicesValidationHandler) {
-            return weakSelf.servicesValidationHandler(services, weakCore.connectedPeripheral);
+            servicesValid = weakSelf.servicesValidationHandler(services, weakCore.connectedPeripheral);
         }
-        return [weakSelf defaultValidateServices:services];
+        servicesValid = [weakSelf defaultValidateServices:services];
+        if (!servicesValid) {
+            NSLog(@"Discarding connetion: wrong services");
+        }
+        return servicesValid;
     }];
 }
 
@@ -187,22 +193,28 @@ static CGFloat defaultMaximumConnectionTime = 5.0;
         if (weakSelf.stateHandler) {
             weakSelf.stateHandler(weakSelf.currentConnectionState);
         }
+        BOOL characteristicsValid = NO;
         if (weakSelf.characteristicsValidationHandler) {
-            return weakSelf.characteristicsValidationHandler(characteristics, service, weakCore.connectedPeripheral);
+            characteristicsValid = weakSelf.characteristicsValidationHandler(characteristics, service, weakCore.connectedPeripheral);
         }
-        return [weakSelf defaultValidateCharacteristics:characteristics forService:service];
+        characteristicsValid = [weakSelf defaultValidateCharacteristics:characteristics forService:service];
+        if (!characteristicsValid) {
+             NSLog(@"Discarding connetion: wrong characteristics");
+        }
+        return characteristicsValid;
     }];
 }
 
 - (BOOL)defaultValidateCharacteristics:(NSArray *)characteristics forService:(CBService *)service {
     NSInteger loopCount = 0;
+    NSArray *desried = [self.connectingPeripheral.configuration characteristicsContainedInService:service.UUID];
     for (CBCharacteristic *characteristic in characteristics) {
         if ([self.connectingPeripheral.configuration configurationContainsCharacteristic:characteristic]) {
             loopCount ++;
         }
     }
     if (self.deviceShouldContainAllConfigurationData) {
-        if (loopCount == self.connectingPeripheral.configuration.characteristics.count) {
+        if (loopCount == desried.count) {
             return YES;
         }
     }

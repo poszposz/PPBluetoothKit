@@ -1,5 +1,5 @@
 //
-//  JPConfiguration.m
+//  PPConfiguration.m
 //
 // Copyright (c) 2016 Jan Posz
 //
@@ -67,7 +67,7 @@
 
 - (NSArray<CBUUID *> *)characteristicsContainedInService:(CBUUID *)serviceUUID {
     NSMutableArray *characteristics = [NSMutableArray new];
-    for (PPCharacteristic *characteristic in characteristics) {
+    for (PPCharacteristic *characteristic in self.characteristics) {
         if ([[characteristic.containedService.uuid UUIDString].lowercaseString isEqualToString:serviceUUID.UUIDString.lowercaseString]) {
             [characteristics addObject:characteristic.uuid];
         }
@@ -127,6 +127,12 @@
         }
     }
     return nil;
+}
+
+#pragma mark - description
+
+- (NSString *)description {
+    return [NSString stringWithFormat:@"\n Services: \n %@ \n Characteristics: \n :%@", self.services, self.characteristics];
 }
 
 @end

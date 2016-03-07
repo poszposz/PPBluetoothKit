@@ -1,5 +1,5 @@
 //
-//  JPConfiguration.h
+//  PPConfiguration.h
 //
 // Copyright (c) 2016 Jan Posz
 //

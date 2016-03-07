@@ -28,6 +28,7 @@
 @interface PPConnectionCoreManager ()
 
 //@property (nonatomic, strong) CBCentralManager *manager;
+@property (nonatomic, assign) NSInteger pendingCharacteristicsDiscoverCount;
 @property (nonatomic, readwrite, strong) PPConfiguration *configuration;
 @property (nonatomic, readwrite, strong) PPPeripheral *connectedPeripheral;
 
@@ -44,6 +45,7 @@
 - (void)startConnectionWithPeripheral:(PPPeripheral *)peripheral {
     self.connectedPeripheral = peripheral;
     self.configuration = peripheral.configuration;
+    self.pendingCharacteristicsDiscoverCount = 0;
     [self scheduleAsSubscriber];
 }
 
@@ -70,7 +72,6 @@
 #pragma mark - connection
 
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
-    
     if (!self.peripheral) {
         BOOL shouldConnect = NO;
         if (self.onDiscoveryHandler) {
@@ -102,7 +103,7 @@
 
 - (void)scheduleConnectionTimer {
     self.connectionTimer = [NSTimer scheduledTimerWithTimeInterval:self.maxConnectionTime target:self selector:@selector(connectionTimeout) userInfo:nil repeats:NO];
-    [self.connectionTimer fire];
+//    [self.connectionTimer fire];
 }
 
 - (void)invalidateConnectionTimer {
@@ -124,10 +125,13 @@
     }
     if (shouldDiscoverCharacteristics) {
         for (CBService *service in peripheral.services) {
+            [self.peripheral discoverCharacteristics:[self.configuration characteristicsContainedInService:service.UUID] forService:service];
             if (self.configuration.characteristics.count) {
                 if ([self.configuration configurationContainsService:service]) {
+                    NSLog(@"Configuration contains service");
                     PPService *s = [self.configuration mirrorServiceFor:service];
                     s.service = service;
+                    self.pendingCharacteristicsDiscoverCount ++;
                     [self.peripheral discoverCharacteristics:[self.configuration characteristicsContainedInService:service.UUID] forService:service];
                 }
             }
@@ -143,6 +147,7 @@
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error {
     ConnectionLog(@"discovered characteristics: %@", service.characteristics);
+    self.pendingCharacteristicsDiscoverCount --;
     BOOL shouldAcceptDevice = NO;
     if (self.onCharacteristicsDiscoveryHandler) {
         shouldAcceptDevice = self.onCharacteristicsDiscoveryHandler(service.characteristics, service);
@@ -152,14 +157,17 @@
             if ([self.configuration configurationContainsCharacteristic:characteristic]) {
                 PPCharacteristic *ch = [self.configuration mirrorCharacteristicFor:characteristic];
                 ch.characteristic = characteristic;
+                NSLog(@"Raw characteristic set for: %@", characteristic);
                 if (ch.shouldObserveValue) {
                     [peripheral setNotifyValue:YES forCharacteristic:characteristic];
                 }
             }
         }
-        [self resetSubscription];
-        if (self.onCompleteConnectionHandler) {
-            self.onCompleteConnectionHandler(self.peripheral);
+        if (self.pendingCharacteristicsDiscoverCount == 0) {
+            [self resetSubscription];
+            if (self.onCompleteConnectionHandler) {
+                self.onCompleteConnectionHandler(self.peripheral);
+            }
         }
     }
     else {
@@ -200,6 +208,8 @@
 #pragma mark - disconnection
 
 - (void)disconnectDevice {
+    [[PPCentralManager sharedManager] permanentlyRemoveSubsriber:self withConfiguration:self.configuration];
+    [[PPCentralManager sharedManager] disconnectPeripheral:self.peripheral];
     [self cleanup];
 }
 

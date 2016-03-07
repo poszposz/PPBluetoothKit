@@ -44,6 +44,7 @@ typedef NS_ENUM(NSInteger) {
 
 - (void)disconnectDevice:(PPPeripheral *)device;
 
+@property (nonatomic, readonly, strong) PPPeripheral *connectingPeripheral;
 
 // defines maximum time for connection to last. If it's too long, timer kills it and consider as filed. Than tries again. Defaults to 5 seconds.
 @property (nonatomic) CGFloat maximumConnectionTime;

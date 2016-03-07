@@ -27,7 +27,7 @@
 @import CoreBluetooth;
 
 #ifdef DEBUG
-#   define ConnectionLog(fmt, ...) if (self.enableLogging) { NSLog((fmt), ##__VA_ARGS__); }
+#   define ConnectionLog(fmt, ...) if (YES) { NSLog((fmt), ##__VA_ARGS__); }
 #endif
 
 @interface PPConnectionCoreManager : NSObject <CBCentralManagerDelegate, CBPeripheralDelegate>
